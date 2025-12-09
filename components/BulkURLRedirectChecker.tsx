@@ -108,7 +108,8 @@ export default function BulkURLRedirectChecker() {
                         }
                     ]
                 )
-            } catch (err: any) {
+            } catch (err: Error | unknown) {
+                const message = err instanceof Error ? err.message : "Failed to fetch";
                 setRows((prev) =>
                     [
                         ...prev,
@@ -117,7 +118,7 @@ export default function BulkURLRedirectChecker() {
                             url: url,
                             displayUrl: list[i],
                             status: "error",
-                            destination: err?.message || "Failed to fetch",
+                            destination: message || "Failed to fetch",
                             type: "Error",
                             hops: [],
                         }
@@ -278,12 +279,12 @@ export default function BulkURLRedirectChecker() {
                                                         <span className="text-xs">{expandedIds[r.id] ? "▾" : "▸"}</span>
                                                         <span
                                                             className={`font-semibold ${String(r.initialStatus || r.status).toString().startsWith("2")
-                                                                    ? "text-emerald-600"
-                                                                    : String(r.initialStatus || r.status).toString().startsWith("3")
-                                                                        ? "text-[#f9771c]"   // custom hex color
-                                                                        : String(r.initialStatus || r.status) === "error"
-                                                                            ? "text-red-600"
-                                                                            : "text-slate-600"
+                                                                ? "text-emerald-600"
+                                                                : String(r.initialStatus || r.status).toString().startsWith("3")
+                                                                    ? "text-[#f9771c]"   // custom hex color
+                                                                    : String(r.initialStatus || r.status) === "error"
+                                                                        ? "text-red-600"
+                                                                        : "text-slate-600"
                                                                 }`}
                                                         >
                                                             {String(r.initialStatus || r.status)}

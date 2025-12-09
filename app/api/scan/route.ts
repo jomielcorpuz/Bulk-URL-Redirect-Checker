@@ -22,11 +22,9 @@ export async function POST(request: NextRequest) {
 
     const result = await scanUrl(url);
     return NextResponse.json(result);
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || "Unknown error" },
-      { status: 500 }
-    );
+  } catch (err: Error | unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -46,14 +44,19 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
 
   for (let hop = 0; hop < maxHops; hop++) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const response = await fetch(current, {
         method: "HEAD",
         redirect: "manual",
         headers: {
           "User-Agent": userAgent,
         },
-        timeout: 10000, // 10 second timeout
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const headers: Record<string, string> = {};
       response.headers.forEach((value, key) => {
@@ -100,17 +103,22 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
       finalUrl = response.url || current;
       finalHeaders = headers;
       break;
-    } catch (e: any) {
+    } catch {
       // HEAD failed, try GET
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
         const response = await fetch(current, {
           method: "GET",
           redirect: "follow",
           headers: {
             "User-Agent": userAgent,
           },
-          timeout: 10000,
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         const headers: Record<string, string> = {};
         response.headers.forEach((value, key) => {
@@ -126,8 +134,10 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
         finalUrl = response.url || current;
         finalHeaders = headers;
         break;
-      } catch (getErr: any) {
-        throw new Error(getErr?.message || "Failed to fetch URL");
+      } catch (getErr: Error | unknown) {
+        const message =
+          getErr instanceof Error ? getErr.message : "Failed to fetch URL";
+        throw new Error(message);
       }
     }
   }

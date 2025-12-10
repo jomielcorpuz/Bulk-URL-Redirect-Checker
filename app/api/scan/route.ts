@@ -45,7 +45,7 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
   for (let hop = 0; hop < maxHops; hop++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       const response = await fetch(current, {
         method: "HEAD",
@@ -107,8 +107,7 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
       // HEAD failed, try GET
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         const response = await fetch(current, {
           method: "GET",
           redirect: "follow",

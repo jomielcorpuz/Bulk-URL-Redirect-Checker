@@ -20,6 +20,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Copy, Download, ExternalLink, Globe, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
+import ThemeToggle from "./ui/theme-toggle"
+import { Input } from "./ui/input"
+import { Textarea } from "./ui/textarea"
 
 type Row = {
     id: string
@@ -162,10 +165,25 @@ export default function BulkURLRedirectChecker() {
     return (
 
         <>
+            <div className="flex justify-end p-6">
+                <ThemeToggle />
+            </div>
+
+            {/* Development Alert */}
+            <div className="mx-6 sm:mx-12 lg:mx-20">
+                <div className="max-w-4xl mx-auto">
+                    <div className="bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-md mb-6">
+                        ⚠️ This tool is under development. Bugs may occur.
+                    </div>
+                </div>
+            </div>
+
             <div className="mx-6 sm:mx-12 lg:mx-20">
                 <div className="max-w-4xl mx-auto text-center py-12">
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold">Redirect Checker</h1>
-                    <p className="mt-3 text-sm text-muted-foreground">Paste one URL per line and click <span className="font-semibold">Check Redirects</span> to scan redirect chains and destinations.</p>
+                    <p className="mt-3 text-sm text-muted-foreground">
+                        Paste one URL per line and click <span className="font-semibold">Check Redirects</span> to scan redirect chains and destinations.
+                    </p>
                 </div>
             </div>
 
@@ -174,7 +192,7 @@ export default function BulkURLRedirectChecker() {
                     <CardContent>
                         <div className="flex flex-col gap-2 my-10 mx-8 md:grid-cols-3 md:items-center">
 
-                            <textarea
+                            <Textarea
                                 placeholder="Enter one URL per line"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}

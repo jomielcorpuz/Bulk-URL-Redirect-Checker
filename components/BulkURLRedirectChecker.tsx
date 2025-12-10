@@ -18,7 +18,7 @@ import {
     PaginationEllipsis,
 } from "@/components/ui/pagination"
 import { Button } from "@/components/ui/button"
-import { Copy, Download, ExternalLink, Globe, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight } from "lucide-react"
+import { Copy, Download, ExternalLink, Globe, Search, ShieldCheck, ShieldAlert, ShieldX, Loader2, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
 import ThemeToggle from "./ui/theme-toggle"
 import { Input } from "./ui/input"
@@ -112,7 +112,6 @@ export default function BulkURLRedirectChecker() {
                     ]
                 )
             } catch (err: Error | unknown) {
-                const message = err instanceof Error ? err.message : "Failed to fetch";
                 setRows((prev) =>
                     [
                         ...prev,
@@ -121,7 +120,7 @@ export default function BulkURLRedirectChecker() {
                             url: url,
                             displayUrl: list[i],
                             status: "error",
-                            destination: message || "Failed to fetch",
+                            destination: "error",
                             type: "Error",
                             hops: [],
                         }
@@ -214,7 +213,14 @@ export default function BulkURLRedirectChecker() {
 
 
                                         <Button onClick={scan} disabled={scanning} className="px-12 py-6 text-lg">
-                                            {scanning ? "Scanning..." : "Check Redirects"}
+                                            {scanning ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                                    Scanning
+                                                </>
+                                            ) : (
+                                                "Check Redirects"
+                                            )}
                                         </Button>
                                     </div>
 
@@ -340,7 +346,7 @@ export default function BulkURLRedirectChecker() {
                                                             </span>
 
                                                         </div>
-                                                        {r.destination ? (
+                                                        {r.destination && r.status !== "error" ? (
                                                             <a
                                                                 className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline"
                                                                 href={r.destination}

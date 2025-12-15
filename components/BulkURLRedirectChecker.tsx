@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button"
 import { Copy, Download, ExternalLink, Globe, Search, ShieldCheck, ShieldAlert, ShieldX, Loader2, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "./ui/card"
 import ThemeToggle from "./ui/theme-toggle"
-import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
 
 type Row = {
@@ -79,55 +78,48 @@ export default function BulkURLRedirectChecker() {
         setScanning(true)
         setRows([]) // Start with empty rows, add them as they're scanned
 
-        for (let i = 0; i < list.length; i++) {
-            const url = normalizeUrl(list[i])
-            try {
-                // Call server-side API to scan the URL
-                const response = await fetch("/api/scan", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ url }),
+        // Fire all requests concurrently
+        const scanPromises = list.map((urlInput, i) => {
+            const url = normalizeUrl(urlInput)
+            return fetch("/api/scan", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url }),
+            })
+                .then(async (response) => {
+                    if (!response.ok) {
+                        const errorData = await response.json()
+                        throw new Error(errorData.error || "Failed to scan URL")
+                    }
+                    const result = await response.json()
+                    return {
+                        id: String(i),
+                        url: url,
+                        displayUrl: urlInput,
+                        status: result.status,
+                        initialStatus: result.initialStatus,
+                        destination: result.destination,
+                        type: result.type,
+                        headers: result.headers,
+                        hops: result.hops,
+                    }
                 })
+                .catch((_err: Error | unknown) => {
+                    return {
+                        id: String(i),
+                        url: url,
+                        displayUrl: urlInput,
+                        status: "error",
+                        destination: "error",
+                        type: "Error",
+                        hops: [],
+                    }
+                })
+        })
 
-                if (!response.ok) {
-                    const errorData = await response.json()
-                    throw new Error(errorData.error || "Failed to scan URL")
-                }
-
-                const result = await response.json()
-                setRows((prev) =>
-                    [
-                        ...prev,
-                        {
-                            id: String(i),
-                            url: url,
-                            displayUrl: list[i],
-                            status: result.status,
-                            initialStatus: result.initialStatus,
-                            destination: result.destination,
-                            type: result.type,
-                            headers: result.headers,
-                            hops: result.hops,
-                        }
-                    ]
-                )
-            } catch (err: Error | unknown) {
-                setRows((prev) =>
-                    [
-                        ...prev,
-                        {
-                            id: String(i),
-                            url: url,
-                            displayUrl: list[i],
-                            status: "error",
-                            destination: "error",
-                            type: "Error",
-                            hops: [],
-                        }
-                    ]
-                )
-            }
-        }
+        // Await all responses and add them to the table
+        const results = await Promise.all(scanPromises)
+        setRows(results)
 
         setScanning(false)
     }
@@ -333,19 +325,20 @@ export default function BulkURLRedirectChecker() {
                                                 </TableCell>
                                                 <TableCell className="truncate">
                                                     <div className="flex items-center">
-                                                        <div className="flex items-center mx-4">
-                                                            {String(normalizeStatusForDisplay(r.status)).toString().startsWith("2") ? (
-                                                                <ShieldCheck size={16} color="#0bb87e" className="mr-2" />
-                                                            ) : String(normalizeStatusForDisplay(r.status)).toString().startsWith("3") || String(normalizeStatusForDisplay(r.status)).toString().startsWith("4") ? (
-                                                                <ShieldAlert size={16} color="#f59e0b" className="mr-2" />
-                                                            ) : (
-                                                                <ShieldX size={16} color="#ef4444" className="mr-2" />
-                                                            )}
-                                                            <span className={`font-semibold ${String(normalizeStatusForDisplay(r.status)).toString().startsWith("2") ? "text-emerald-400" : String(normalizeStatusForDisplay(r.status)).toString().startsWith("3") ? "text-amber-600" : String(normalizeStatusForDisplay(r.status)) === "error" ? "text-red-600" : "text-slate-600"}`}>
-                                                                {String(normalizeStatusForDisplay(r.status))}
-                                                            </span>
-
-                                                        </div>
+                                                        {String(r.status) !== "error" && (
+                                                            <div className="flex items-center mx-4">
+                                                                {String(normalizeStatusForDisplay(r.status)).toString().startsWith("2") ? (
+                                                                    <ShieldCheck size={16} color="#0bb87e" className="mr-2" />
+                                                                ) : String(normalizeStatusForDisplay(r.status)).toString().startsWith("3") || String(normalizeStatusForDisplay(r.status)).toString().startsWith("4") ? (
+                                                                    <ShieldAlert size={16} color="#f59e0b" className="mr-2" />
+                                                                ) : (
+                                                                    <ShieldX size={16} color="#ef4444" className="mr-2" />
+                                                                )}
+                                                                <span className={`font-semibold ${String(normalizeStatusForDisplay(r.status)).toString().startsWith("2") ? "text-emerald-400" : String(normalizeStatusForDisplay(r.status)).toString().startsWith("3") ? "text-amber-600" : String(normalizeStatusForDisplay(r.status)) === "error" ? "text-red-600" : "text-slate-600"}`}>
+                                                                    {String(normalizeStatusForDisplay(r.status))}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                         {r.destination && r.status !== "error" ? (
                                                             <a
                                                                 className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 hover:underline"

@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 
 type ScanResult = {
@@ -52,13 +54,14 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
   for (let hop = 0; hop < maxHops; hop++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
 
       const response = await fetch(current, {
         method: "HEAD",
         redirect: "manual",
         headers: requestHeaders,
         signal: controller.signal,
+        cache: "no-store",
       });
 
       clearTimeout(timeoutId);
@@ -83,7 +86,6 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
         });
 
         if (!location) {
-          // No location header, can't continue
           finalStatus = response.status;
           finalUrl = current;
           finalHeaders = headers;
@@ -92,7 +94,6 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
 
         const next = new URL(location, current).toString();
         if (next === current) {
-          // Prevent infinite loop
           finalStatus = response.status;
           finalUrl = current;
           finalHeaders = headers;
@@ -103,21 +104,22 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
         continue;
       }
 
-      // Not a redirect, we're done
       finalStatus = response.status;
       finalUrl = response.url || current;
       finalHeaders = headers;
       break;
-    } catch {
-      // HEAD failed, try GET
+    } catch (headErr: Error | unknown) {
+      // HEAD can be blocked or unreliable on some hosts, so retry with GET
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
         const response = await fetch(current, {
           method: "GET",
-          redirect: "follow",
+          redirect: "manual",
           headers: requestHeaders,
           signal: controller.signal,
+          cache: "no-store",
         });
 
         clearTimeout(timeoutId);
@@ -127,9 +129,35 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
           headers[key] = value;
         });
 
-        // Track initial status on first hop
         if (hop === 0) {
           initialStatus = response.status;
+        }
+
+        if (response.status >= 300 && response.status < 400) {
+          const location = response.headers.get("location");
+          hops.push({
+            url: current,
+            status: response.status,
+            location: location || undefined,
+          });
+
+          if (!location) {
+            finalStatus = response.status;
+            finalUrl = current;
+            finalHeaders = headers;
+            break;
+          }
+
+          const next = new URL(location, current).toString();
+          if (next === current) {
+            finalStatus = response.status;
+            finalUrl = current;
+            finalHeaders = headers;
+            break;
+          }
+
+          current = next;
+          continue;
         }
 
         finalStatus = response.status;
@@ -139,6 +167,11 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
       } catch (getErr: Error | unknown) {
         const message =
           getErr instanceof Error ? getErr.message : "Failed to fetch URL";
+        console.error("scanUrl error", {
+          url: current,
+          error: message,
+          headError: headErr,
+        });
         throw new Error(message);
       }
     }

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     if (!url || typeof url !== "string") {
       return NextResponse.json(
         { error: "Missing or invalid URL" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -38,9 +38,16 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
   let finalHeaders: Record<string, string> = {};
   let initialStatus: number | string = "—"; // Track the initial status of the first request
 
-  // Custom User-Agent to avoid bot-blocking
+  // Browser-like request headers to improve compatibility and avoid bot blocking
   const userAgent =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+  const requestHeaders = {
+    "User-Agent": userAgent,
+    Accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    // Fetch in Next.js automatically handles compression, so explicit Accept-Encoding is not required.
+  };
 
   for (let hop = 0; hop < maxHops; hop++) {
     try {
@@ -50,9 +57,7 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
       const response = await fetch(current, {
         method: "HEAD",
         redirect: "manual",
-        headers: {
-          "User-Agent": userAgent,
-        },
+        headers: requestHeaders,
         signal: controller.signal,
       });
 
@@ -111,9 +116,7 @@ async function scanUrl(inputUrl: string): Promise<ScanResult> {
         const response = await fetch(current, {
           method: "GET",
           redirect: "follow",
-          headers: {
-            "User-Agent": userAgent,
-          },
+          headers: requestHeaders,
           signal: controller.signal,
         });
 
